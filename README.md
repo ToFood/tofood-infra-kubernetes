@@ -1,5 +1,5 @@
 🍽️ ToFood - Infraestrutura com Terraform
-Bem-vindo ao repositório de infraestrutura do ToFood, responsável por configurar e gerenciar toda a estrutura necessária para o backend do projeto Quickfood na AWS usando Terraform. Este README fornece todas as informações necessárias para você começar rapidamente, seja para testar, modificar ou aprender com o projeto.
+Bem-vindo ao repositório de infraestrutura do ToFood, responsável por configurar e gerenciar toda a estrutura necessária para o backend do projeto tofood na AWS usando Terraform. Este README fornece todas as informações necessárias para você começar rapidamente, seja para testar, modificar ou aprender com o projeto.
 
 🚀 Tecnologias Utilizadas
 Terraform: Utilizado para gerenciamento da infraestrutura como código, permitindo a criação, atualização e destruição de recursos na nuvem de maneira declarativa.
@@ -57,8 +57,8 @@ Comece clonando este repositório para sua máquina local:
 
 sh
 Copiar código
-git clone https://github.com/seu_usuario/quickfood-backend.git
-cd quickfood-backend/infra
+git clone https://github.com/seu_usuario/tofood-backend.git
+cd tofood-backend/infra
 Inicialize o Terraform
 
 Inicialize o diretório de trabalho do Terraform. Esta etapa baixa todos os plugins necessários:
