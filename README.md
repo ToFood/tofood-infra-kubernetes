@@ -57,7 +57,7 @@ Comece clonando este repositório para sua máquina local:
 
 sh
 Copiar código
-git clone https://github.com/seu_usuario/tofood-backend.git
+git clone https://github.com/nãopossoesquecerdepreencher/tofood-backend-ts.git
 cd tofood-backend/infra
 Inicialize o Terraform
 
