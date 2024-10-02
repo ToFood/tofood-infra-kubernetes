@@ -1,0 +1,36 @@
+# Diretórios e arquivos do Terraform
+.terraform/
+terraform.tfstate
+terraform.tfstate.backup
+*.tfstate
+*.tfstate.*
+
+# Logs do Terraform
+crash.log
+
+# Override files do Terraform, usados para configurações locais
+*.tfvars
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# Arquivos sensíveis contendo variáveis, como credenciais
+*.tfvars
+
+# Senhas ou arquivos sensíveis em geral
+*.pem
+*.key
+
+# Logs do sistema
+*.log
+
+# Arquivos do editor
+.vscode/
+.idea/
+*.swp
+*~
+
+# Arquivos de sistema
+.DS_Store
+Thumbs.db
