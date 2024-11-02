@@ -3,7 +3,7 @@ name: Deploy Infra - Terraform
 on:
   push:
     branches:
-      - "main" # O workflow será executado apenas em pushes para a branch 'main'
+      - "**" # Dispara o pipeline em qualquer commit em qualquer branch
 
 jobs:
   deploy:
@@ -17,7 +17,7 @@ jobs:
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
       AWS_SESSION_TOKEN: ${{ secrets.AWS_SESSION_TOKEN }}
       AWS_DEFAULT_REGION: ${{ vars.AWS_REGION }}
-      KUBERNETES_CLUSTER_NAME: "tofood-eks-cluster" # Valor fixo do nome do cluster
+      KUBERNETES_CLUSTER_NAME: "tofood-eks-cluster"
 
     steps:
       # 1. Checkout do código-fonte
@@ -57,7 +57,6 @@ jobs:
 
       # 8. Aplicar o plano (somente na branch principal)
       - name: Terraform Apply
-        if: github.ref == 'refs/heads/main'
         run: terraform apply -auto-approve tfplan
 
       # 9. Verificar o estado do Terraform para outputs e debug
@@ -77,6 +76,10 @@ jobs:
         run: |
           aws eks update-kubeconfig --name $KUBERNETES_CLUSTER_NAME --region ${{ vars.AWS_REGION }}
 
-      # 12. Verificar estado do cluster Kubernetes
       - name: Get Kubernetes Cluster Nodes
         run: kubectl get nodes
+
+      - name: Apply Kubernetes Manifests
+        run: |
+          kubectl apply -f kubernetes/namespaces.yaml
+          kubectl apply -f kubernetes/rbac.yaml
