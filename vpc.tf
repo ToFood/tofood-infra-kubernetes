@@ -1,3 +1,9 @@
+# Declaração do recurso de dados para obter as zonas de disponibilidade
+data "aws_availability_zones" "available" {
+  state = "available"
+}
+
+# Recurso VPC
 resource "aws_vpc" "tofood_vpc" {
   cidr_block = "10.0.0.0/16"
   tags = {
@@ -5,6 +11,7 @@ resource "aws_vpc" "tofood_vpc" {
   }
 }
 
+# Recurso de sub-redes
 resource "aws_subnet" "tofood_subnets" {
   count             = 3
   vpc_id            = aws_vpc.tofood_vpc.id
