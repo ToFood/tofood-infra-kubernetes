@@ -3,7 +3,7 @@ name: Deploy Infra - Terraform
 on:
   push:
     branches:
-      - "**" # Dispara o pipeline em qualquer commit em qualquer branch
+      - "main"
 
 jobs:
   deploy:
