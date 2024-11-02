@@ -1,5 +1,20 @@
+terraform {
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 4.0" # Ajuste para a versão desejada
+    }
+    kubernetes = {
+      source  = "hashicorp/kubernetes"
+      version = "~> 2.0" # Ajuste para a versão desejada
+    }
+  }
+
+  required_version = ">= 1.0.0" # Ajuste conforme a versão mínima do Terraform que deseja suportar
+}
+
 provider "aws" {
-  region = "us-east-1" # Ajuste conforme a sua região preferida
+  region = var.region # Usa a variável 'region' definida em 'variables.tf'
 }
 
 provider "kubernetes" {
