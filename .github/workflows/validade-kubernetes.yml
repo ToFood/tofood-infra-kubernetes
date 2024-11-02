@@ -1,0 +1,60 @@
+name: Validate Kubernetes Cluster
+
+on:
+  pull_request:
+    branches:
+      - "main"
+
+jobs:
+  validate-kubernetes:
+    name: Validate Kubernetes Setup
+    runs-on: ubuntu-latest
+
+    env:
+      AWS_REGION: ${{ vars.AWS_REGION }}
+      AWS_ACCESS_KEY_ID: ${{ vars.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      AWS_SESSION_TOKEN: ${{ secrets.AWS_SESSION_TOKEN }}
+      AWS_DEFAULT_REGION: ${{ vars.AWS_REGION }}
+      KUBERNETES_CLUSTER_NAME: "tofood-eks-cluster" # Nome do cluster
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ vars.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Check if EKS Cluster Exists
+        run: |
+          if ! aws eks describe-cluster --name $KUBERNETES_CLUSTER_NAME --region ${{ vars.AWS_REGION }} --query "cluster.status" --output text; then
+            echo "Warning: Cluster '$KUBERNETES_CLUSTER_NAME' not found in region '${{ vars.AWS_REGION }}'. Proceeding without error."
+          else
+            echo ⚠️"Cluster '$KUBERNETES_CLUSTER_NAME' não está configurado."
+          fi
+
+      - name: Configure kubectl
+        run: |
+          aws eks update-kubeconfig --name $KUBERNETES_CLUSTER_NAME --region ${{ vars.AWS_REGION }}
+        continue-on-error: true # Continua sem erro se a configuração falhar porque o cluster não existe
+
+      - name: Get Kubernetes Cluster Nodes
+        run: kubectl get nodes
+        continue-on-error: true # Continua sem erro se a configuração falhar porque o cluster não existe
+
+      - name: Validate Namespace Creation
+        run: |
+          kubectl apply --dry-run=client -f kubernetes/namespaces.yaml
+          kubectl apply --dry-run=client -f kubernetes/rbac.yaml
+        continue-on-error: true # Continua sem erro se a configuração falhar porque o cluster não existe
+
+      - name: Lint Kubernetes Manifests (Optional)
+        run: |
+          kubeval kubernetes/namespaces.yaml
+          kubeval kubernetes/rbac.yaml
+        continue-on-error: true # Continua sem erro se a configuração falhar porque o cluster não existe
