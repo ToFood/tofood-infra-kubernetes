@@ -50,14 +50,14 @@ jobs:
       - name: Terraform Validate
         run: terraform validate
 
-      # 7. Planejar as mudanças de infraestrutura
+      # 7. Planejar as mudanças de infraestrutura e salvar o plano
       - name: Terraform Plan
-        run: terraform plan
+        run: terraform plan -out=tfplan
 
-      # 8. Aplicar as mudanças de infraestrutura (somente na branch principal)
+      # 8. Aplicar o plano (somente na branch principal)
       - name: Terraform Apply
         if: github.ref == 'refs/heads/main'
-        run: terraform apply -auto-approve
+        run: terraform apply -auto-approve tfplan
 
       # 9. Verificar o estado do Terraform para outputs e debug
       - name: Show Terraform State
