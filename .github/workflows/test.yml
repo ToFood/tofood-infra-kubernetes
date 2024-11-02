@@ -64,7 +64,10 @@ jobs:
         id: outputs
         run: |
           # Capturar e verificar a saída do Terraform
-          CLUSTER_NAME=$(terraform output -raw cluster_name 2>/dev/null || true)
+          echo "Debugging Terraform output:"
+          terraform output -json
+
+          CLUSTER_NAME=$(terraform output -raw cluster_name || true)
           if [ -z "$CLUSTER_NAME" ]; then
             echo "Error: Unable to capture cluster name from Terraform output."
             exit 1
