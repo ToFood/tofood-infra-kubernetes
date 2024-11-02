@@ -17,6 +17,7 @@ jobs:
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
       AWS_SESSION_TOKEN: ${{ secrets.AWS_SESSION_TOKEN }}
       AWS_DEFAULT_REGION: ${{ vars.AWS_REGION }}
+      KUBERNETES_CLUSTER_NAME: "tofood-eks-cluster" # Valor fixo do nome do cluster
 
     steps:
       # 1. Checkout do código-fonte
@@ -63,25 +64,10 @@ jobs:
       - name: Show Terraform State
         run: terraform show
 
-      # 10. Capturar o output do Terraform com verificações e depuração
-      - name: Capture Terraform Outputs
-        id: outputs
-        run: |
-          # Capturar e verificar a saída do Terraform
-          echo "Debugging Terraform Output:"
-          terraform output -json
-
-          CLUSTER_NAME=$(terraform output -raw cluster_name || true)
-          if [ -z "$CLUSTER_NAME" ]; then
-            echo "Error: Unable to capture cluster name from Terraform output."
-            exit 1
-          fi
-          echo "KUBERNETES_CLUSTER_NAME=$CLUSTER_NAME" >> $GITHUB_ENV
-
-      # 11. Adicione uma etapa para verificar o status do cluster
+      # 10. Adicione uma etapa para verificar o status do cluster
       - name: Wait for EKS cluster to be ready
         run: |
-          until aws eks describe-cluster --name ${{ env.KUBERNETES_CLUSTER_NAME }} --region ${{ env.AWS_REGION }} --query "cluster.status" --output text | grep -q "ACTIVE"; do
+          until aws eks describe-cluster --name $KUBERNETES_CLUSTER_NAME --region ${{ env.AWS_REGION }} --query "cluster.status" --output text | grep -q "ACTIVE"; do
             echo "Waiting for EKS cluster to be ACTIVE..."
             sleep 30
           done
@@ -91,14 +77,14 @@ jobs:
           AWS_SESSION_TOKEN: ${{ secrets.AWS_SESSION_TOKEN }}
           AWS_REGION: ${{ vars.AWS_REGION }}
 
-      # 12. Configurar kubectl para interagir com o cluster Kubernetes
+      # 11. Configurar kubectl para interagir com o cluster Kubernetes
       - name: Configure kubectl
         run: |
-          aws eks update-kubeconfig --name ${{ env.KUBERNETES_CLUSTER_NAME }} --region ${{ vars.AWS_REGION }}
+          aws eks update-kubeconfig --name $KUBERNETES_CLUSTER_NAME --region ${{ vars.AWS_REGION }}
         env:
           AWS_ACCESS_KEY_ID: ${{ vars.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 
-      # 13. Verificar estado do cluster Kubernetes
+      # 12. Verificar estado do cluster Kubernetes
       - name: Get Kubernetes Cluster Nodes
         run: kubectl get nodes
