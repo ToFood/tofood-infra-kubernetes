@@ -1,13 +1,13 @@
-name: Deploy Infra - Terraform
+name: Test Terraform
 
 on:
-  push:
+  pull_request:
     branches:
-      - "main" # O workflow será executado apenas em pushes para a branch 'main'
+      - "main"
 
 jobs:
-  deploy:
-    name: Deploy Terraform Infrastructure
+  test-terraform:
+    name: Test Terraform
     runs-on: ubuntu-latest
 
     env:
@@ -54,29 +54,3 @@ jobs:
       # 7. Planejar as mudanças de infraestrutura e salvar o plano
       - name: Terraform Plan
         run: terraform plan -out=tfplan
-
-      # 8. Aplicar o plano (somente na branch principal)
-      - name: Terraform Apply
-        if: github.ref == 'refs/heads/main'
-        run: terraform apply -auto-approve tfplan
-
-      # 9. Verificar o estado do Terraform para outputs e debug
-      - name: Show Terraform State
-        run: terraform show
-
-      # 10. Adicione uma etapa para verificar o status do cluster
-      - name: Wait for EKS cluster to be ready
-        run: |
-          until aws eks describe-cluster --name $KUBERNETES_CLUSTER_NAME --region ${{ env.AWS_REGION }} --query "cluster.status" --output text | grep -q "ACTIVE"; do
-            echo "Waiting for EKS cluster to be ACTIVE..."
-            sleep 30
-          done
-
-      # 11. Configurar kubectl para interagir com o cluster Kubernetes
-      - name: Configure kubectl
-        run: |
-          aws eks update-kubeconfig --name $KUBERNETES_CLUSTER_NAME --region ${{ vars.AWS_REGION }}
-
-      # 12. Verificar estado do cluster Kubernetes
-      - name: Get Kubernetes Cluster Nodes
-        run: kubectl get nodes
