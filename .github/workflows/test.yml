@@ -3,7 +3,7 @@ name: Terraform Kubernetes Deployment
 on:
   push:
     branches:
-      - '**'
+      - "**"
 
 jobs:
   terraform:
@@ -16,57 +16,76 @@ jobs:
       AWS_ACCESS_KEY_ID: ${{ vars.AWS_ACCESS_KEY_ID }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
       AWS_SESSION_TOKEN: ${{ secrets.AWS_SESSION_TOKEN }}
-      KUBERNETES_CLUSTER_NAME: ${{ vars.KUBERNETES_CLUSTER_NAME }}
+      AWS_DEFAULT_REGION: ${{ vars.AWS_REGION }}
 
     steps:
-    # 1. Checkout do código-fonte
-    - name: Checkout code
-      uses: actions/checkout@v3
+      # 1. Checkout do código-fonte
+      - name: Checkout code
+        uses: actions/checkout@v3
 
-    # 2. Setup Terraform
-    - name: Setup Terraform
-      uses: hashicorp/setup-terraform@v2
-      with:
-        terraform_version: "1.0.0"
+      # 2. Setup Terraform
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: "1.0.0"
 
-    # 3. Configurar as credenciais da AWS usando os secrets do GitHub
-    - name: Configure AWS Credentials
-      uses: aws-actions/configure-aws-credentials@v2
-      with:
-        aws-access-key-id: ${{ vars.AWS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
-        aws-region: ${{ vars.AWS_REGION }}
+      # 3. Configurar as credenciais da AWS usando os secrets do GitHub
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ vars.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
+          aws-region: ${{ vars.AWS_REGION }}
 
-    # 4. Verificar formatação do Terraform
-    - name: Terraform Format Check
-      run: terraform fmt -check -recursive
+      # 4. Verificar formatação do Terraform
+      - name: Terraform Format Check
+        run: terraform fmt -check -recursive
 
-    # 5. Inicializar o Terraform (antes da validação)
-    - name: Terraform Init
-      run: terraform init
+      # 5. Inicializar o Terraform
+      - name: Terraform Init
+        run: terraform init
 
-    # 6. Validar a configuração do Terraform
-    - name: Terraform Validate
-      run: terraform validate
+      # 6. Validar a configuração do Terraform
+      - name: Terraform Validate
+        run: terraform validate
 
-    # 7. Planejar as mudanças de infraestrutura
-    - name: Terraform Plan
-      run: terraform plan
+      # 7. Planejar as mudanças de infraestrutura
+      - name: Terraform Plan
+        run: terraform plan
 
-    # 8. Aplicar as mudanças de infraestrutura (somente na branch principal)
-    - name: Terraform Apply
-      if: github.ref == 'refs/heads/main'
-      run: terraform apply -auto-approve
+      # 8. Aplicar as mudanças de infraestrutura (somente na branch principal)
+      - name: Terraform Apply
+        if: github.ref == 'refs/heads/main'
+        run: terraform apply -auto-approve
 
-    # 9. Configurar kubectl para interagir com o cluster Kubernetes
-    - name: Configure kubectl
-      run: |
-        aws eks update-kubeconfig --name ${{ vars.KUBERNETES_CLUSTER_NAME }} --region ${{ vars.AWS_REGION }}
-      env:
-        AWS_ACCESS_KEY_ID: ${{ vars.AWS_ACCESS_KEY_ID }}
-        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      # 9. Capturar o output do Terraform
+      - name: Capture Terraform Outputs
+        id: outputs
+        run: |
+          echo "KUBERNETES_CLUSTER_NAME=$(terraform output -raw cluster_name)" >> $GITHUB_ENV
 
-    # 10. Verificar estado do cluster Kubernetes
-    - name: Get Kubernetes Cluster Nodes
-      run: kubectl get nodes
+      # 10. Adicione uma etapa para verificar o status do cluster
+      - name: Wait for EKS cluster to be ready
+        run: |
+          until aws eks describe-cluster --name ${{ env.KUBERNETES_CLUSTER_NAME }} --region ${{ env.AWS_REGION }} --query "cluster.status" --output text | grep -q "ACTIVE"; do
+            echo "Waiting for EKS cluster to be ACTIVE..."
+            sleep 30
+          done
+        env:
+          AWS_ACCESS_KEY_ID: ${{ vars.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_SESSION_TOKEN: ${{ secrets.AWS_SESSION_TOKEN }}
+          AWS_REGION: ${{ vars.AWS_REGION }}
+
+      # 11. Configurar kubectl para interagir com o cluster Kubernetes
+      - name: Configure kubectl
+        run: |
+          aws eks update-kubeconfig --name ${{ env.KUBERNETES_CLUSTER_NAME }} --region ${{ vars.AWS_REGION }}
+        env:
+          AWS_ACCESS_KEY_ID: ${{ vars.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+
+      # 12. Verificar estado do cluster Kubernetes
+      - name: Get Kubernetes Cluster Nodes
+        run: kubectl get nodes
