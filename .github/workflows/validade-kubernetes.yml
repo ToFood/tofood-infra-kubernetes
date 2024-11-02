@@ -1,7 +1,9 @@
 name: Validate Kubernetes Cluster
 
 on:
-  workflow_dispatch: # Permite que o pipeline seja executado manualmente
+  pull_request:
+    branches:
+      - "main"
 
 jobs:
   validate-kubernetes:
