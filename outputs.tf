@@ -4,6 +4,6 @@ output "cluster_endpoint" {
 }
 
 output "cluster_name" {
-  value       = var.cluster_name
+  value       = aws_eks_cluster.tofood_cluster.name
   description = "Nome do Cluster EKS"
 }
