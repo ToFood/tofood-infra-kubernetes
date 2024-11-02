@@ -59,12 +59,16 @@ jobs:
         if: github.ref == 'refs/heads/main'
         run: terraform apply -auto-approve
 
-      # 9. Capturar o output do Terraform com verificações
+      # 9. Verificar o estado do Terraform para outputs e debug
+      - name: Show Terraform State
+        run: terraform show
+
+      # 10. Capturar o output do Terraform com verificações e depuração
       - name: Capture Terraform Outputs
         id: outputs
         run: |
           # Capturar e verificar a saída do Terraform
-          echo "Debugging Terraform output:"
+          echo "Debugging Terraform Output:"
           terraform output -json
 
           CLUSTER_NAME=$(terraform output -raw cluster_name || true)
@@ -74,7 +78,7 @@ jobs:
           fi
           echo "KUBERNETES_CLUSTER_NAME=$CLUSTER_NAME" >> $GITHUB_ENV
 
-      # 10. Adicione uma etapa para verificar o status do cluster
+      # 11. Adicione uma etapa para verificar o status do cluster
       - name: Wait for EKS cluster to be ready
         run: |
           until aws eks describe-cluster --name ${{ env.KUBERNETES_CLUSTER_NAME }} --region ${{ env.AWS_REGION }} --query "cluster.status" --output text | grep -q "ACTIVE"; do
@@ -87,7 +91,7 @@ jobs:
           AWS_SESSION_TOKEN: ${{ secrets.AWS_SESSION_TOKEN }}
           AWS_REGION: ${{ vars.AWS_REGION }}
 
-      # 11. Configurar kubectl para interagir com o cluster Kubernetes
+      # 12. Configurar kubectl para interagir com o cluster Kubernetes
       - name: Configure kubectl
         run: |
           aws eks update-kubeconfig --name ${{ env.KUBERNETES_CLUSTER_NAME }} --region ${{ vars.AWS_REGION }}
@@ -95,6 +99,6 @@ jobs:
           AWS_ACCESS_KEY_ID: ${{ vars.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 
-      # 12. Verificar estado do cluster Kubernetes
+      # 13. Verificar estado do cluster Kubernetes
       - name: Get Kubernetes Cluster Nodes
         run: kubectl get nodes
