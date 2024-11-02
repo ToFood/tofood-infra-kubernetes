@@ -54,7 +54,7 @@ jobs:
               // Exemplo de teste de conexão com o serviço S3
               const s3 = new AWS.S3();
               const result = await s3.listBuckets().promise();
-              console.log('✨🎉 Conexão bem-sucedida com a AWS! 🎉✨');
+              console.log('✨🎉 Conexão bem-sucedida com a AWS! 🎉✨' );
               console.log('🪣 Buckets encontrados:', result.Buckets.map(bucket => bucket.Name).join(', '));
             } catch (error) {
               console.error('❌ ::error:: Falha ao conectar à AWS:', error.message);
