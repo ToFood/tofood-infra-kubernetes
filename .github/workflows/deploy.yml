@@ -17,7 +17,7 @@ jobs:
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
       AWS_SESSION_TOKEN: ${{ secrets.AWS_SESSION_TOKEN }}
       AWS_DEFAULT_REGION: ${{ vars.AWS_REGION }}
-      KUBERNETES_CLUSTER_NAME: "tofood-eks-cluster"
+      KUBERNETES_CLUSTER_NAME: ${{ vars.KUBERNETES_CLUSTER_NAME }}
 
     steps:
       # 1. Checkout do código-fonte
@@ -75,6 +75,16 @@ jobs:
       - name: Configure kubectl
         run: |
           aws eks update-kubeconfig --name $KUBERNETES_CLUSTER_NAME --region ${{ vars.AWS_REGION }}
+
+      - name: Check if Application Exists
+        run: |
+          if ! kubectl get deployment -n tofood my-app; then
+            echo "Application not found. Creating application."
+            kubectl apply -f kubernetes/namespaces.yaml
+            kubectl apply -f kubernetes/rbac.yaml
+          else
+            echo "Application already exists. Skipping creation."
+          fi
 
       - name: Get Kubernetes Cluster Nodes
         run: kubectl get nodes
