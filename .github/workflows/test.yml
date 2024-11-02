@@ -63,7 +63,12 @@ jobs:
       - name: Capture Terraform Outputs
         id: outputs
         run: |
-          echo "KUBERNETES_CLUSTER_NAME=$(terraform output -raw cluster_name)" >> $GITHUB_ENV
+          CLUSTER_NAME=$(terraform output -raw cluster_name 2>/dev/null || echo "")
+          if [ -z "$CLUSTER_NAME" ]; then
+            echo "Error: Unable to capture cluster name from Terraform output."
+            exit 1
+          fi
+          echo "KUBERNETES_CLUSTER_NAME=$CLUSTER_NAME" >> $GITHUB_ENV
 
       # 10. Adicione uma etapa para verificar o status do cluster
       - name: Wait for EKS cluster to be ready
