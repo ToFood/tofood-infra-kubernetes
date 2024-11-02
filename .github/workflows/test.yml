@@ -18,7 +18,6 @@ jobs:
       AWS_SESSION_TOKEN: ${{ secrets.AWS_SESSION_TOKEN }}
       KUBERNETES_CLUSTER_NAME: ${{ vars.KUBERNETES_CLUSTER_NAME }}
 
-
     steps:
     # 1. Checkout do código-fonte
     - name: Checkout code
@@ -39,31 +38,28 @@ jobs:
         aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
         aws-region: ${{ vars.AWS_REGION }}
 
-    # 4. Configurar variáveis de ambiente para o Terraform (dados sensíveis, por exemplo, senhas) 
-    
-
-    # 5. Verificar formatação do Terraform
+    # 4. Verificar formatação do Terraform
     - name: Terraform Format Check
       run: terraform fmt -check -recursive
+
+    # 5. Inicializar o Terraform (antes da validação)
+    - name: Terraform Init
+      run: terraform init
 
     # 6. Validar a configuração do Terraform
     - name: Terraform Validate
       run: terraform validate
 
-    # 7. Inicializar o Terraform
-    - name: Terraform Init
-      run: terraform init
-
-    # 8. Planejar as mudanças de infraestrutura
+    # 7. Planejar as mudanças de infraestrutura
     - name: Terraform Plan
       run: terraform plan
 
-    # 9. Aplicar as mudanças de infraestrutura (somente na branch principal)
+    # 8. Aplicar as mudanças de infraestrutura (somente na branch principal)
     - name: Terraform Apply
       if: github.ref == 'refs/heads/main'
       run: terraform apply -auto-approve
 
-    # 10. Configurar kubectl para interagir com o cluster Kubernetes
+    # 9. Configurar kubectl para interagir com o cluster Kubernetes
     - name: Configure kubectl
       run: |
         aws eks update-kubeconfig --name ${{ vars.KUBERNETES_CLUSTER_NAME }} --region ${{ vars.AWS_REGION }}
@@ -71,6 +67,6 @@ jobs:
         AWS_ACCESS_KEY_ID: ${{ vars.AWS_ACCESS_KEY_ID }}
         AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 
-    # 11. Verificar estado do cluster Kubernetes
+    # 10. Verificar estado do cluster Kubernetes
     - name: Get Kubernetes Cluster Nodes
       run: kubectl get nodes
