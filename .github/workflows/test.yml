@@ -63,16 +63,16 @@ jobs:
       - name: Install jq
         run: sudo apt-get install -y jq
 
-      # 10. Capturar o output do Terraform com verificação
+      # 10. Capturar o output do Terraform com verificações
       - name: Capture Terraform Outputs
         id: outputs
         run: |
-          OUTPUT=$(terraform output -json 2>/dev/null)
-          if [ -z "$OUTPUT" ]; then
-            echo "Error: Terraform output is empty or invalid."
-            exit 1
-          fi
-          CLUSTER_NAME=$(echo "$OUTPUT" | jq -r '.cluster_name.value')
+          # Depurar saída do Terraform para verificar formato
+          echo "Debugging Terraform Output:"
+          terraform output
+
+          # Capturar nome do cluster
+          CLUSTER_NAME=$(terraform output cluster_name 2>/dev/null)
           if [ -z "$CLUSTER_NAME" ]; then
             echo "Error: Unable to capture cluster name from Terraform output."
             exit 1
