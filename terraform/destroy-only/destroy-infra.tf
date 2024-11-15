@@ -1,3 +1,8 @@
+# Declaração do recurso de dados para obter as zonas de disponibilidade
+data "aws_availability_zones" "available" {
+  state = "available"
+}
+
 # IAM Roles
 resource "aws_iam_role" "eks_role" {
   name = "tofood-eks-role"
