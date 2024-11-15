@@ -32,7 +32,6 @@ jobs:
       # Step to terminate EC2 instances
       - name: Terminate EC2 Instances
         run: |
-          # Lista todas as instâncias EC2 em execução
           INSTANCE_IDS=$(aws ec2 describe-instances --query "Reservations[*].Instances[?State.Name=='running'].InstanceId" --output text)
           if [ -z "$INSTANCE_IDS" ]; then
             echo "Nenhuma instância EC2 em execução encontrada."
@@ -43,61 +42,47 @@ jobs:
             echo "Instâncias EC2 encerradas com sucesso."
           fi
 
-      # Step to destroy all IAM Roles using AWS CLI
-      - name: Destroy IAM Roles (Using AWS CLI)
+      # Step to delete load balancers
+      - name: Delete Load Balancers
         run: |
-          ROLE_NAMES=("tofood-eks-cluster-role" "tofood-eks-node-role")
-          for ROLE_NAME in "${ROLE_NAMES[@]}"; do
-            echo "Tentando excluir políticas anexadas ao IAM Role: $ROLE_NAME"
+          LB_ARN_LIST=$(aws elbv2 describe-load-balancers --query "LoadBalancers[*].LoadBalancerArn" --output text)
+          if [ -z "$LB_ARN_LIST" ]; then
+            echo "Nenhum Load Balancer encontrado."
+          else
+            for LB_ARN in $LB_ARN_LIST; do
+              echo "Excluindo Load Balancer: $LB_ARN"
+              aws elbv2 delete-load-balancer --load-balancer-arn $LB_ARN
+            done
+          fi
 
-            # Verifica se a role existe antes de listar políticas anexadas
-            ROLE_EXISTS=$(aws iam get-role --role-name $ROLE_NAME --query "Role.RoleName" --output text 2>/dev/null || echo "false")
-            if [ "$ROLE_EXISTS" == "false" ]; then
-              echo "Role $ROLE_NAME não encontrada. Pulando..."
-              continue
-            fi
-
-            # Lista e remove as políticas anexadas
-            POLICY_ARN_LIST=$(aws iam list-attached-role-policies --role-name $ROLE_NAME --query "AttachedPolicies[*].PolicyArn" --output text)
-            if [ -z "$POLICY_ARN_LIST" ]; then
-              echo "Nenhuma política anexada ao IAM Role: $ROLE_NAME"
-            else
-              for POLICY_ARN in $POLICY_ARN_LIST; do
-                echo "Desanexando política $POLICY_ARN de $ROLE_NAME"
-                aws iam detach-role-policy --role-name $ROLE_NAME --policy-arn $POLICY_ARN || echo "Erro ao desanexar política $POLICY_ARN"
-              done
-            fi
-
-            # Exclui a role
-            echo "Excluindo IAM Role: $ROLE_NAME"
-            aws iam delete-role --role-name $ROLE_NAME || echo "Erro ao excluir a Role $ROLE_NAME. Verifique dependências ou permissões."
-          done
-
-      - name: Terraform Init
-        run: cd terraform/destroy-only && terraform init
-
-      - name: Terraform Plan Destroy
-        run: cd terraform/destroy-only && terraform plan -destroy -out=tfplan
-
-      - name: Terraform Apply Destroy
-        run: cd terraform/destroy-only && terraform apply -auto-approve tfplan
-
-      # Step to destroy all VPCs using AWS CLI
-      - name: Destroy All VPCs (Using AWS CLI)
+      # Step to delete security groups
+      - name: Delete Security Groups
         run: |
-          # Lista todas as VPCs
+          SG_IDS=$(aws ec2 describe-security-groups --query "SecurityGroups[?GroupName!='default'].GroupId" --output text)
+          if [ -z "$SG_IDS" ]; then
+            echo "Nenhum Security Group encontrado."
+          else
+            for SG_ID in $SG_IDS; do
+              echo "Excluindo Security Group: $SG_ID"
+              aws ec2 delete-security-group --group-id $SG_ID || echo "Erro ao excluir $SG_ID. Verifique dependências."
+            done
+          fi
+
+      # Step to delete subnets and VPCs
+      - name: Destroy VPCs and Associated Resources
+        run: |
           VPC_IDS=$(aws ec2 describe-vpcs --query "Vpcs[*].VpcId" --output text)
           for VPC_ID in $VPC_IDS; do
             echo "Excluindo recursos associados à VPC: $VPC_ID"
 
-            # Remove subnets associadas
+            # Remove subnets
             SUBNET_IDS=$(aws ec2 describe-subnets --filters "Name=vpc-id,Values=$VPC_ID" --query "Subnets[*].SubnetId" --output text)
             for SUBNET_ID in $SUBNET_IDS; do
               echo "Excluindo Subnet: $SUBNET_ID"
-              aws ec2 delete-subnet --subnet-id $SUBNET_ID
+              aws ec2 delete-subnet --subnet-id $SUBNET_ID || echo "Erro ao excluir Subnet: $SUBNET_ID"
             done
 
-            # Remove Internet Gateways associadas
+            # Remove internet gateways
             IGW_IDS=$(aws ec2 describe-internet-gateways --filters "Name=attachment.vpc-id,Values=$VPC_ID" --query "InternetGateways[*].InternetGatewayId" --output text)
             for IGW_ID in $IGW_IDS; do
               echo "Desanexando e excluindo Internet Gateway: $IGW_ID"
@@ -105,16 +90,9 @@ jobs:
               aws ec2 delete-internet-gateway --internet-gateway-id $IGW_ID
             done
 
-            # Exclui Security Groups personalizados
-            SG_IDS=$(aws ec2 describe-security-groups --filters "Name=vpc-id,Values=$VPC_ID" --query "SecurityGroups[?GroupName!='default'].GroupId" --output text)
-            for SG_ID in $SG_IDS; do
-              echo "Excluindo Security Group: $SG_ID"
-              aws ec2 delete-security-group --group-id $SG_ID
-            done
-
-            # Finalmente, exclui a VPC
+            # Exclui a VPC
             echo "Excluindo VPC: $VPC_ID"
-            aws ec2 delete-vpc --vpc-id $VPC_ID
+            aws ec2 delete-vpc --vpc-id $VPC_ID || echo "Erro ao excluir a VPC: $VPC_ID"
           done
 
       - name: Terraform Init
