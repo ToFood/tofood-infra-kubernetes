@@ -2,23 +2,23 @@ terraform {
   required_providers {
     aws = {
       source  = "hashicorp/aws"
-      version = "~> 4.0" # Ajuste para a versão desejada
+      version = "~> 4.0" 
     }
     kubernetes = {
       source  = "hashicorp/kubernetes"
-      version = "~> 2.0" # Ajuste para a versão desejada
+      version = "~> 2.0" 
     }
   }
 
-  required_version = ">= 1.0.0" # Ajuste conforme a versão mínima do Terraform que deseja suportar
+  required_version = ">= 1.0.0" 
 }
 
 provider "aws" {
-  region = var.region # Usa a variável 'region' definida em 'variables.tf'
+  region = var.region 
 }
 
 provider "kubernetes" {
-  host                   = data.aws_eks_cluster.cluster.endpoint
-  token                  = data.aws_eks_cluster_auth.cluster.token
-  cluster_ca_certificate = base64decode(data.aws_eks_cluster.cluster.certificate_authority.0.data)
+  host                   = data.aws_eks_cluster.tofood_cluster.endpoint
+  token                  = data.aws_eks_cluster_auth.tofood_cluster.token
+  cluster_ca_certificate = base64decode(data.aws_eks_cluster.tofood_cluster.certificate_authority.0.data)
 }

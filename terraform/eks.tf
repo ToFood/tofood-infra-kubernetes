@@ -1,7 +1,7 @@
 # Declaração do Cluster EKS
 resource "aws_eks_cluster" "tofood_cluster" {
-  name     = "tofood-eks-cluster"
-  role_arn = aws_iam_role.eks_role.arn
+  name     = var.cluster_name
+  role_arn = aws_iam_role.eks_cluster_role.arn
 
   vpc_config {
     subnet_ids = aws_subnet.tofood_subnets[*].id
@@ -12,23 +12,28 @@ resource "aws_eks_cluster" "tofood_cluster" {
   }
 }
 
-# Role do Cluster EKS
-resource "aws_iam_role" "eks_role" {
-  name = "tofood-eks-role"
+# IAM Role para o Cluster EKS
+resource "aws_iam_role" "eks_cluster_role" {
+  name = "tofood-eks-cluster-role"
 
-  assume_role_policy = data.aws_iam_policy_document.eks_assume_role_policy.json
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [
+      {
+        Effect = "Allow",
+        Principal = {
+          Service = "eks.amazonaws.com"
+        },
+        Action = "sts:AssumeRole"
+      }
+    ]
+  })
 }
 
-# Política de Assunção do Cluster
-data "aws_iam_policy_document" "eks_assume_role_policy" {
-  statement {
-    actions = ["sts:AssumeRole"]
-
-    principals {
-      type        = "Service"
-      identifiers = ["eks.amazonaws.com"]
-    }
-  }
+# Políticas do Role para o Cluster EKS
+resource "aws_iam_role_policy_attachment" "eks_cluster_policy" {
+  role       = aws_iam_role.eks_cluster_role.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEKSClusterPolicy"
 }
 
 # Grupo de Nós Gerenciados do EKS
@@ -45,17 +50,14 @@ resource "aws_eks_node_group" "tofood_node_group" {
   }
 
   instance_types = ["t3.medium"]
+  ami_type       = "AL2_x86_64" # Tipo de AMI recomendado para EKS
 
   tags = {
     Name = "tofood-node-group"
   }
-
-  # Configuração para evitar problemas com a criação dos nós
-  ami_type  = "AL2_x86_64" # Certifique-se de usar a AMI correta para Kubernetes
-  disk_size = 20           # Tamanho em GB
 }
 
-# Role dos Nós Gerenciados do EKS
+# IAM Role para o Grupo de Nós
 resource "aws_iam_role" "eks_node_role" {
   name = "tofood-eks-node-role"
 
@@ -87,13 +89,4 @@ resource "aws_iam_role_policy_attachment" "eks_cni_policy" {
 resource "aws_iam_role_policy_attachment" "eks_ec2_policy" {
   role       = aws_iam_role.eks_node_role.name
   policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
-}
-
-# Dados do Cluster EKS para Configuração do Kubernetes Provider
-data "aws_eks_cluster" "cluster" {
-  name = aws_eks_cluster.tofood_cluster.name
-}
-
-data "aws_eks_cluster_auth" "cluster" {
-  name = aws_eks_cluster.tofood_cluster.name
 }
