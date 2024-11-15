@@ -45,6 +45,29 @@ variable "image_name" {
   default     = "tofood/backend"
 }
 
+# IAM Role para EKS Cluster
+resource "aws_iam_role" "eks_default_role" {
+  name = "AmazonEKS_DefaultRole"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [
+      {
+        Effect = "Allow",
+        Principal = {
+          Service = "eks.amazonaws.com"
+        },
+        Action = "sts:AssumeRole"
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "eks_default_role_policy" {
+  role       = aws_iam_role.eks_default_role.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEKSClusterPolicy"
+}
+
 # VPC Configuration
 data "aws_availability_zones" "available" {
   state = "available"
@@ -96,7 +119,7 @@ resource "aws_route_table_association" "tofood_route_table_association" {
 # EKS Cluster
 resource "aws_eks_cluster" "tofood_cluster" {
   name     = var.cluster_name
-  role_arn = data.aws_iam_role.eks_default_role.arn
+  role_arn = aws_iam_role.eks_default_role.arn
 
   vpc_config {
     subnet_ids = aws_subnet.tofood_subnets[*].id
@@ -105,10 +128,6 @@ resource "aws_eks_cluster" "tofood_cluster" {
   tags = {
     Name = "tofood-eks-cluster"
   }
-}
-
-data "aws_iam_role" "eks_default_role" {
-  name = "AmazonEKS_DefaultRole"
 }
 
 data "aws_eks_cluster" "tofood_cluster" {
@@ -162,7 +181,6 @@ resource "kubernetes_deployment" "tofood_app" {
     }
   }
 }
-
 
 # Kubernetes Service
 resource "kubernetes_service" "tofood_app_service" {
