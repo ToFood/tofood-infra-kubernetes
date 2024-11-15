@@ -29,6 +29,20 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ vars.AWS_REGION }}
 
+      # Step to terminate EC2 instances
+      - name: Terminate EC2 Instances
+        run: |
+          # Lista todas as instâncias EC2 em execução
+          INSTANCE_IDS=$(aws ec2 describe-instances --query "Reservations[*].Instances[?State.Name=='running'].InstanceId" --output text)
+          if [ -z "$INSTANCE_IDS" ]; then
+            echo "Nenhuma instância EC2 em execução encontrada."
+          else
+            echo "Encerrando instâncias EC2: $INSTANCE_IDS"
+            aws ec2 terminate-instances --instance-ids $INSTANCE_IDS
+            aws ec2 wait instance-terminated --instance-ids $INSTANCE_IDS
+            echo "Instâncias EC2 encerradas com sucesso."
+          fi
+
       # Step to destroy all IAM Roles using AWS CLI
       - name: Destroy IAM Roles (Using AWS CLI)
         run: |
