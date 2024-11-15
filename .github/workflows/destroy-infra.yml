@@ -29,6 +29,41 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ vars.AWS_REGION }}
 
+      # Step to destroy all VPCs using AWS CLI
+      - name: Destroy All VPCs (Using AWS CLI)
+        run: |
+          # Lista todas as VPCs
+          VPC_IDS=$(aws ec2 describe-vpcs --query "Vpcs[*].VpcId" --output text)
+          for VPC_ID in $VPC_IDS; do
+            echo "Excluindo recursos associados à VPC: $VPC_ID"
+
+            # Remove subnets associadas
+            SUBNET_IDS=$(aws ec2 describe-subnets --filters "Name=vpc-id,Values=$VPC_ID" --query "Subnets[*].SubnetId" --output text)
+            for SUBNET_ID in $SUBNET_IDS; do
+              echo "Excluindo Subnet: $SUBNET_ID"
+              aws ec2 delete-subnet --subnet-id $SUBNET_ID
+            done
+
+            # Remove Internet Gateways associadas
+            IGW_IDS=$(aws ec2 describe-internet-gateways --filters "Name=attachment.vpc-id,Values=$VPC_ID" --query "InternetGateways[*].InternetGatewayId" --output text)
+            for IGW_ID in $IGW_IDS; do
+              echo "Desanexando e excluindo Internet Gateway: $IGW_ID"
+              aws ec2 detach-internet-gateway --internet-gateway-id $IGW_ID --vpc-id $VPC_ID
+              aws ec2 delete-internet-gateway --internet-gateway-id $IGW_ID
+            done
+
+            # Exclui Security Groups personalizados
+            SG_IDS=$(aws ec2 describe-security-groups --filters "Name=vpc-id,Values=$VPC_ID" --query "SecurityGroups[?GroupName!='default'].GroupId" --output text)
+            for SG_ID in $SG_IDS; do
+              echo "Excluindo Security Group: $SG_ID"
+              aws ec2 delete-security-group --group-id $SG_ID
+            done
+
+            # Finalmente, exclui a VPC
+            echo "Excluindo VPC: $VPC_ID"
+            aws ec2 delete-vpc --vpc-id $VPC_ID
+          done
+
       - name: Terraform Init
         run: cd terraform/destroy-only && terraform init
 

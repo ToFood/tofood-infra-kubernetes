@@ -3,9 +3,9 @@ data "aws_availability_zones" "available" {
   state = "available"
 }
 
-# IAM Roles
-resource "aws_iam_role" "eks_role" {
-  name = "tofood-eks-role"
+# IAM Role do Cluster EKS
+resource "aws_iam_role" "eks_cluster_role" {
+  name = "tofood-eks-cluster-role"
   assume_role_policy = jsonencode({
     Version = "2012-10-17",
     Statement = [
@@ -20,6 +20,7 @@ resource "aws_iam_role" "eks_role" {
   })
 }
 
+# IAM Role dos Nós do EKS
 resource "aws_iam_role" "eks_node_role" {
   name = "tofood-eks-node-role"
   assume_role_policy = jsonencode({
@@ -55,7 +56,7 @@ resource "aws_iam_role_policy_attachment" "eks_ec2_policy" {
 # Cluster EKS
 resource "aws_eks_cluster" "eks_cluster" {
   name     = "tofood-eks-cluster"
-  role_arn = aws_iam_role.eks_role.arn
+  role_arn = aws_iam_role.eks_cluster_role.arn
 
   vpc_config {
     subnet_ids = aws_subnet.eks_subnets[*].id
@@ -103,21 +104,21 @@ resource "aws_subnet" "eks_subnets" {
   }
 }
 
-# Load Balancer
+# Load Balancer (exemplo para deletar load balancers criados automaticamente)
 resource "aws_lb" "eks_lb" {
   name               = "eks-auto-lb"
   load_balancer_type = "application"
   subnets            = aws_subnet.eks_subnets[*].id
 }
 
-# Instâncias EC2 Residuais
+# Instâncias EC2 Residuais (se houver)
 resource "aws_instance" "ec2_instances" {
   ami           = "ami-12345678" # Substitua com uma AMI válida
   instance_type = "t2.micro"
   subnet_id     = aws_subnet.eks_subnets[0].id
 }
 
-# Bucket S3 Residual
+# Bucket S3 residual
 resource "aws_s3_bucket" "eks_s3_bucket" {
   bucket        = "tofood-eks-residual-bucket"
   force_destroy = true
