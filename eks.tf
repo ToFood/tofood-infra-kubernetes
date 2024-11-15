@@ -51,8 +51,8 @@ resource "aws_eks_node_group" "tofood_node_group" {
   }
 
   # Configuração para evitar problemas com a criação dos nós
-  ami_type = "AL2_x86_64" # Certifique-se de usar a AMI correta para Kubernetes
-  disk_size = 20          # Tamanho em GB
+  ami_type  = "AL2_x86_64" # Certifique-se de usar a AMI correta para Kubernetes
+  disk_size = 20           # Tamanho em GB
 }
 
 # Role dos Nós Gerenciados do EKS

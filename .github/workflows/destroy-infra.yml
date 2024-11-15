@@ -1,11 +1,11 @@
-name: Destroy Infra - Terraform
+name: Destroy Infra
 
 on:
   workflow_dispatch: # Configuração para disparo manual
 
 jobs:
   destroy:
-    name: Destroy Terraform Infrastructure
+    name: Destroy Infrastructure
     runs-on: ubuntu-latest
 
     env:
@@ -38,10 +38,14 @@ jobs:
       - name: Terraform Init
         run: terraform init
 
-      # 5. Verificar o plano de destruição
+      # 5. Validar a configuração do Terraform (opcional, mas recomendado)
+      - name: Terraform Validate
+        run: terraform validate
+
+      # 6. Verificar o plano de destruição
       - name: Terraform Plan (Destroy)
         run: terraform plan -destroy -out=tfplan
 
-      # 6. Aplicar o plano de destruição (somente na branch principal)
+      # 7. Aplicar o plano de destruição
       - name: Terraform Apply (Destroy)
-        run: terraform apply -destroy -auto-approve tfplan
+        run: terraform apply tfplan
