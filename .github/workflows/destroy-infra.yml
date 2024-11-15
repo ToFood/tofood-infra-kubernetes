@@ -1,0 +1,47 @@
+name: Destroy Infra - Terraform
+
+on:
+  workflow_dispatch: # Configuração para disparo manual
+
+jobs:
+  destroy:
+    name: Destroy Terraform Infrastructure
+    runs-on: ubuntu-latest
+
+    env:
+      TF_VERSION: 1.0.0
+      AWS_REGION: ${{ vars.AWS_REGION }}
+      AWS_ACCESS_KEY_ID: ${{ vars.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      AWS_DEFAULT_REGION: ${{ vars.AWS_REGION }}
+
+    steps:
+      # 1. Checkout do código-fonte
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      # 2. Setup Terraform
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: "1.0.0"
+
+      # 3. Configurar as credenciais da AWS usando os secrets do GitHub
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ vars.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      # 4. Inicializar o Terraform
+      - name: Terraform Init
+        run: terraform init
+
+      # 5. Verificar o plano de destruição
+      - name: Terraform Plan (Destroy)
+        run: terraform plan -destroy -out=tfplan
+
+      # 6. Aplicar o plano de destruição (somente na branch principal)
+      - name: Terraform Apply (Destroy)
+        run: terraform apply -destroy -auto-approve tfplan

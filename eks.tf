@@ -49,6 +49,10 @@ resource "aws_eks_node_group" "tofood_node_group" {
   tags = {
     Name = "tofood-node-group"
   }
+
+  # Configuração para evitar problemas com a criação dos nós
+  ami_type = "AL2_x86_64" # Certifique-se de usar a AMI correta para Kubernetes
+  disk_size = 20          # Tamanho em GB
 }
 
 # Role dos Nós Gerenciados do EKS
@@ -77,7 +81,7 @@ resource "aws_iam_role_policy_attachment" "eks_node_policy" {
 
 resource "aws_iam_role_policy_attachment" "eks_cni_policy" {
   role       = aws_iam_role.eks_node_role.name
-  policy_arn = "arn:aws:iam::aws:policy/AmazonEKSCNIPolicy"
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy"
 }
 
 resource "aws_iam_role_policy_attachment" "eks_ec2_policy" {
