@@ -13,7 +13,6 @@ jobs:
       AWS_REGION: ${{ vars.AWS_REGION }}
       AWS_ACCESS_KEY_ID: ${{ vars.AWS_ACCESS_KEY_ID }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-      AWS_SESSION_TOKEN: ${{ secrets.AWS_SESSION_TOKEN }}
 
     steps:
       - name: 🎨 Fazer checkout do repositório
@@ -33,7 +32,6 @@ jobs:
           echo "🌐 AWS_REGION: $AWS_REGION"
           echo "🔑 AWS_ACCESS_KEY_ID: $AWS_ACCESS_KEY_ID"
           echo "🔒 AWS_SECRET_ACCESS_KEY: ****"  # Escondendo por segurança
-          echo "🔐 AWS_SESSION_TOKEN: ****"  # Escondendo por segurança
 
       - name: 🔗 Testar conexão com a AWS
         run: |
@@ -42,12 +40,11 @@ jobs:
           const region = process.env.AWS_REGION;
           const accessKeyId = process.env.AWS_ACCESS_KEY_ID;
           const secretAccessKey = process.env.AWS_SECRET_ACCESS_KEY;
-          const sessionToken = process.env.AWS_SESSION_TOKEN;
 
           console.log('🔍 Iniciando teste de conexão com a AWS...');
           console.log('🌐 Região configurada:', region);
 
-          AWS.config.update({ region, accessKeyId, secretAccessKey, sessionToken });
+          AWS.config.update({ region, accessKeyId, secretAccessKey });
 
           async function testConnection() {
             try {
