@@ -154,7 +154,7 @@ resource "kubernetes_deployment" "tofood_app" {
           name  = "tofood-container"
           image = "${var.aws_account_id}.dkr.ecr.${var.region}.amazonaws.com/${var.image_name}:latest"
 
-          ports {
+          port {
             container_port = 80
           }
         }
@@ -162,6 +162,7 @@ resource "kubernetes_deployment" "tofood_app" {
     }
   }
 }
+
 
 # Kubernetes Service
 resource "kubernetes_service" "tofood_app_service" {
