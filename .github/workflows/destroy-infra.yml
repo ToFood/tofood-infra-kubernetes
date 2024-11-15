@@ -34,15 +34,29 @@ jobs:
         run: |
           ROLE_NAMES=("tofood-eks-cluster-role" "tofood-eks-node-role")
           for ROLE_NAME in "${ROLE_NAMES[@]}"; do
-            echo "Excluindo políticas anexadas ao IAM Role: $ROLE_NAME"
-            POLICY_ARN_LIST=$(aws iam list-attached-role-policies --role-name $ROLE_NAME --query "AttachedPolicies[*].PolicyArn" --output text)
-            for POLICY_ARN in $POLICY_ARN_LIST; do
-              aws iam detach-role-policy --role-name $ROLE_NAME --policy-arn $POLICY_ARN
-              echo "Política $POLICY_ARN desanexada de $ROLE_NAME"
-            done
+            echo "Tentando excluir políticas anexadas ao IAM Role: $ROLE_NAME"
 
+            # Verifica se a role existe antes de listar políticas anexadas
+            ROLE_EXISTS=$(aws iam get-role --role-name $ROLE_NAME --query "Role.RoleName" --output text 2>/dev/null || echo "false")
+            if [ "$ROLE_EXISTS" == "false" ]; then
+              echo "Role $ROLE_NAME não encontrada. Pulando..."
+              continue
+            fi
+
+            # Lista e remove as políticas anexadas
+            POLICY_ARN_LIST=$(aws iam list-attached-role-policies --role-name $ROLE_NAME --query "AttachedPolicies[*].PolicyArn" --output text)
+            if [ -z "$POLICY_ARN_LIST" ]; then
+              echo "Nenhuma política anexada ao IAM Role: $ROLE_NAME"
+            else
+              for POLICY_ARN in $POLICY_ARN_LIST; do
+                echo "Desanexando política $POLICY_ARN de $ROLE_NAME"
+                aws iam detach-role-policy --role-name $ROLE_NAME --policy-arn $POLICY_ARN || echo "Erro ao desanexar política $POLICY_ARN"
+              done
+            fi
+
+            # Exclui a role
             echo "Excluindo IAM Role: $ROLE_NAME"
-            aws iam delete-role --role-name $ROLE_NAME || echo "Role $ROLE_NAME não existe ou já foi excluído"
+            aws iam delete-role --role-name $ROLE_NAME || echo "Erro ao excluir a Role $ROLE_NAME. Verifique dependências ou permissões."
           done
 
       # Step to destroy all VPCs using AWS CLI
