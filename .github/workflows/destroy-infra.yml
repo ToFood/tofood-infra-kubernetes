@@ -30,16 +30,10 @@ jobs:
           aws-region: ${{ vars.AWS_REGION }}
 
       - name: Terraform Init
-        run: terraform init
-
-      # Comente ou remova esta etapa após importar os roles uma vez
-      - name: Terraform Import Existing Roles (Optional)
-        run: |
-          terraform import aws_iam_role.eks_role tofood-eks-role
-          terraform import aws_iam_role.eks_node_role tofood-eks-node-role
+        run: cd terraform/destroy-only && terraform init
 
       - name: Terraform Plan Destroy
-        run: terraform plan -destroy -out=tfplan
+        run: cd terraform/destroy-only && terraform plan -destroy -out=tfplan
 
       - name: Terraform Apply Destroy
-        run: terraform apply -auto-approve tfplan
+        run: cd terraform/destroy-only && terraform apply -auto-approve tfplan

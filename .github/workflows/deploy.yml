@@ -37,32 +37,29 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ vars.AWS_REGION }}
 
-      - name: Remove destroy-infra.tf Temporarily
-        run: rm -f destroy-infra.tf # Exclui o arquivo temporariamente
-
       # 4. Verificar formatação do Terraform
       - name: Terraform Format Check
-        run: terraform fmt -check -recursive
+        run: terraform fmt -check -recursive terraform/
 
       # 5. Inicializar o Terraform
       - name: Terraform Init
-        run: terraform init
+        run: cd terraform && terraform init
 
       # 6. Validar a configuração do Terraform
       - name: Terraform Validate
-        run: terraform validate
+        run: cd terraform && terraform validate
 
       # 7. Planejar as mudanças de infraestrutura e salvar o plano
       - name: Terraform Plan
-        run: terraform plan -out=tfplan
+        run: cd terraform && terraform plan -out=tfplan
 
       # 8. Aplicar o plano (somente na branch principal)
       - name: Terraform Apply
-        run: terraform apply -auto-approve tfplan
+        run: cd terraform && terraform apply -auto-approve tfplan
 
       # 9. Verificar o estado do Terraform para outputs e debug
       - name: Show Terraform State
-        run: terraform show
+        run: cd terraform && terraform show
 
       # 10. Adicione uma etapa para verificar o status do cluster
       - name: Wait for EKS cluster to be ready
