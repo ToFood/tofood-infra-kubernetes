@@ -73,6 +73,15 @@ jobs:
             aws iam delete-role --role-name $ROLE_NAME || echo "Erro ao excluir a Role $ROLE_NAME. Verifique dependências ou permissões."
           done
 
+      - name: Terraform Init
+        run: cd terraform/destroy-only && terraform init
+
+      - name: Terraform Plan Destroy
+        run: cd terraform/destroy-only && terraform plan -destroy -out=tfplan
+
+      - name: Terraform Apply Destroy
+        run: cd terraform/destroy-only && terraform apply -auto-approve tfplan
+
       # Step to destroy all VPCs using AWS CLI
       - name: Destroy All VPCs (Using AWS CLI)
         run: |
