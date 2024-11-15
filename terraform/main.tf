@@ -37,7 +37,7 @@ variable "cluster_name" {
 
 variable "aws_account_id" {
   description = "AWS Account ID"
-  default     = "AKIAQQABDPONQ3T7KOOJ"
+  default     = "123456789012" # Substitua pelo seu ID de conta AWS
 }
 
 variable "image_name" {
@@ -109,6 +109,14 @@ resource "aws_eks_cluster" "tofood_cluster" {
 
 data "aws_iam_role" "eks_default_role" {
   name = "AmazonEKS_DefaultRole"
+}
+
+data "aws_eks_cluster" "tofood_cluster" {
+  name = aws_eks_cluster.tofood_cluster.name
+}
+
+data "aws_eks_cluster_auth" "tofood_cluster" {
+  name = aws_eks_cluster.tofood_cluster.name
 }
 
 # Kubernetes Namespace
