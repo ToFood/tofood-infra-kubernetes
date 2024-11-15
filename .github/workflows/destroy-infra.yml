@@ -29,6 +29,22 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ vars.AWS_REGION }}
 
+      # Step to destroy all IAM Roles using AWS CLI
+      - name: Destroy IAM Roles (Using AWS CLI)
+        run: |
+          ROLE_NAMES=("tofood-eks-cluster-role" "tofood-eks-node-role")
+          for ROLE_NAME in "${ROLE_NAMES[@]}"; do
+            echo "Excluindo políticas anexadas ao IAM Role: $ROLE_NAME"
+            POLICY_ARN_LIST=$(aws iam list-attached-role-policies --role-name $ROLE_NAME --query "AttachedPolicies[*].PolicyArn" --output text)
+            for POLICY_ARN in $POLICY_ARN_LIST; do
+              aws iam detach-role-policy --role-name $ROLE_NAME --policy-arn $POLICY_ARN
+              echo "Política $POLICY_ARN desanexada de $ROLE_NAME"
+            done
+
+            echo "Excluindo IAM Role: $ROLE_NAME"
+            aws iam delete-role --role-name $ROLE_NAME || echo "Role $ROLE_NAME não existe ou já foi excluído"
+          done
+
       # Step to destroy all VPCs using AWS CLI
       - name: Destroy All VPCs (Using AWS CLI)
         run: |
