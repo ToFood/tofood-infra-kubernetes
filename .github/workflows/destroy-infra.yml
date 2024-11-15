@@ -1,11 +1,10 @@
 name: Destroy Infra
 
 on:
-  workflow_dispatch: # Configuração para disparo manual
+  workflow_dispatch: # Executado manualmente
 
 jobs:
   destroy:
-    name: Destroy Infrastructure
     runs-on: ubuntu-latest
 
     env:
@@ -13,20 +12,16 @@ jobs:
       AWS_REGION: ${{ vars.AWS_REGION }}
       AWS_ACCESS_KEY_ID: ${{ vars.AWS_ACCESS_KEY_ID }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-      AWS_DEFAULT_REGION: ${{ vars.AWS_REGION }}
 
     steps:
-      # 1. Checkout do código-fonte
       - name: Checkout code
         uses: actions/checkout@v3
 
-      # 2. Setup Terraform
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v2
         with:
           terraform_version: "1.0.0"
 
-      # 3. Configurar as credenciais da AWS usando os secrets do GitHub
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v2
         with:
@@ -34,18 +29,17 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ vars.AWS_REGION }}
 
-      # 4. Inicializar o Terraform
       - name: Terraform Init
         run: terraform init
 
-      # 5. Validar a configuração do Terraform (opcional, mas recomendado)
-      - name: Terraform Validate
-        run: terraform validate
+      # Comente ou remova esta etapa após importar os roles uma vez
+      - name: Terraform Import Existing Roles (Optional)
+        run: |
+          terraform import aws_iam_role.eks_role tofood-eks-role
+          terraform import aws_iam_role.eks_node_role tofood-eks-node-role
 
-      # 6. Verificar o plano de destruição
-      - name: Terraform Plan (Destroy)
+      - name: Terraform Plan Destroy
         run: terraform plan -destroy -out=tfplan
 
-      # 7. Aplicar o plano de destruição
-      - name: Terraform Apply (Destroy)
-        run: terraform apply tfplan
+      - name: Terraform Apply Destroy
+        run: terraform apply -auto-approve tfplan

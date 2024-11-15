@@ -15,7 +15,6 @@ jobs:
       AWS_REGION: ${{ vars.AWS_REGION }}
       AWS_ACCESS_KEY_ID: ${{ vars.AWS_ACCESS_KEY_ID }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-      #AWS_SESSION_TOKEN: ${{ secrets.AWS_SESSION_TOKEN }}
       AWS_DEFAULT_REGION: ${{ vars.AWS_REGION }}
       KUBERNETES_CLUSTER_NAME: ${{ vars.KUBERNETES_CLUSTER_NAME }}
 
@@ -37,6 +36,9 @@ jobs:
           aws-access-key-id: ${{ vars.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Remove destroy-infra.tf Temporarily
+        run: rm -f destroy-infra.tf # Exclui o arquivo temporariamente
 
       # 4. Verificar formatação do Terraform
       - name: Terraform Format Check
