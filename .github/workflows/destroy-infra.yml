@@ -5,6 +5,7 @@ on:
 
 jobs:
   destroy-infra:
+    name: 💣 Destruindo Infra AWS
     runs-on: ubuntu-latest
 
     env:
@@ -53,6 +54,27 @@ jobs:
               echo "Excluindo Load Balancer: $LB_ARN"
               aws elbv2 delete-load-balancer --load-balancer-arn $LB_ARN
             done
+          fi
+
+      # Step to delete EKS cluster
+      - name: Delete EKS Cluster
+        run: |
+          echo "Excluindo cluster EKS..."
+          CLUSTER_STATUS=$(aws eks describe-cluster --name ${{ vars.KUBERNETES_CLUSTER_NAME }} --region ${{ vars.AWS_REGION }} --query "cluster.status" --output text 2>/dev/null || echo "NOT_FOUND")
+          if [ "$CLUSTER_STATUS" == "NOT_FOUND" ]; then
+            echo "O cluster EKS '${{ vars.KUBERNETES_CLUSTER_NAME }}' não existe. Pulando..."
+          else
+            NODEGROUPS=$(aws eks list-nodegroups --cluster-name ${{ vars.KUBERNETES_CLUSTER_NAME }} --query "nodegroups" --output text)
+            if [ -n "$NODEGROUPS" ]; then
+              for NODEGROUP in $NODEGROUPS; do
+                echo "Excluindo Node Group: $NODEGROUP"
+                aws eks delete-nodegroup --cluster-name ${{ vars.KUBERNETES_CLUSTER_NAME }} --nodegroup-name $NODEGROUP
+                aws eks wait nodegroup-deleted --cluster-name ${{ vars.KUBERNETES_CLUSTER_NAME }} --nodegroup-name $NODEGROUP
+                echo "Node Group $NODEGROUP excluído com sucesso."
+              done
+            fi
+            aws eks delete-cluster --name ${{ vars.KUBERNETES_CLUSTER_NAME }}
+            echo "Cluster EKS '${{ vars.KUBERNETES_CLUSTER_NAME }}' excluído com sucesso."
           fi
 
       # Step to delete security groups

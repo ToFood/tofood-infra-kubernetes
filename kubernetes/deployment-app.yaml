@@ -1,0 +1,97 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: tofood
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tofood-app
+  namespace: tofood
+  labels:
+    app: tofood
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: tofood
+  template:
+    metadata:
+      labels:
+        app: tofood
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - name: tofood-container
+          image: AKIAQQABDPONQ3T7KOOJ.dkr.ecr.us-east-1.amazonaws.com/tofood/backend:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 80
+          resources:
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 10
+            periodSeconds: 5
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          env:
+            - name: NODE_ENV
+              value: "production"
+          volumeMounts:
+            - name: storage-volume
+              mountPath: /data
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+      volumes:
+        - name: storage-volume
+          persistentVolumeClaim:
+            claimName: tofood-pvc
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+      maxSurge: 1
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: tofood-pvc
+  namespace: tofood
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: tofood-service
+  namespace: tofood
+  labels:
+    app: tofood
+spec:
+  type: LoadBalancer
+  selector:
+    app: tofood
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 80

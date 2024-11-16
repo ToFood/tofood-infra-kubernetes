@@ -1,4 +1,4 @@
-name: Deploy Infra - Terraform
+name: Build Infra - Terraform
 
 on:
   push:
@@ -6,8 +6,8 @@ on:
       - "main"
 
 jobs:
-  deploy:
-    name: Deploy Terraform Infrastructure
+  infra-aws:
+    name: 📦 Build Infra AWS
     runs-on: ubuntu-latest
 
     env:
@@ -91,6 +91,7 @@ jobs:
             echo "Application not found. Creating application."
             kubectl apply -f kubernetes/namespaces.yaml
             kubectl apply -f kubernetes/rbac.yaml
+            kubectl apply -f kubernetes/deployment-app.yaml
           else
             echo "Application already exists. Skipping creation."
           fi
@@ -102,3 +103,4 @@ jobs:
         run: |
           kubectl apply -f kubernetes/namespaces.yaml
           kubectl apply -f kubernetes/rbac.yaml
+          kubectl apply -f kubernetes/deployment-app.yaml
