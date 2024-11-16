@@ -108,7 +108,6 @@ jobs:
             done
           fi
 
-      # Step to delete Network Interfaces
       - name: Delete Network Interfaces
         run: |
           NETWORK_INTERFACE_IDS=$(aws ec2 describe-network-interfaces --query "NetworkInterfaces[*].NetworkInterfaceId" --output text)
@@ -116,17 +115,18 @@ jobs:
             echo "Nenhuma interface de rede encontrada."
           else
             for NETWORK_INTERFACE_ID in $NETWORK_INTERFACE_IDS; do
-              ATTACHMENT_STATE=$(aws ec2 describe-network-interfaces --network-interface-ids $NETWORK_INTERFACE_ID --query "NetworkInterfaces[0].Status" --output text)
-              if [ "$ATTACHMENT_STATE" == "in-use" ]; then
-                echo "A interface de rede $NETWORK_INTERFACE_ID está em uso. Tentando desvincular..."
-                INSTANCE_ID=$(aws ec2 describe-network-interfaces --network-interface-ids $NETWORK_INTERFACE_ID --query "NetworkInterfaces[0].Attachment.InstanceId" --output text)
-                if [ "$INSTANCE_ID" != "None" ]; then
-                  echo "Desvinculando a interface $NETWORK_INTERFACE_ID do EC2 $INSTANCE_ID..."
-                  aws ec2 detach-network-interface --attachment-id $(aws ec2 describe-network-interfaces --network-interface-ids $NETWORK_INTERFACE_ID --query "NetworkInterfaces[0].Attachment.AttachmentId" --output text) || echo "Erro ao desvincular a interface $NETWORK_INTERFACE_ID"
-                fi
+              echo "Verificando dependências para a interface: $NETWORK_INTERFACE_ID"
+              
+              # Desvincular da instância EC2, se aplicável
+              ATTACHMENT_ID=$(aws ec2 describe-network-interfaces --network-interface-ids $NETWORK_INTERFACE_ID --query "NetworkInterfaces[0].Attachment.AttachmentId" --output text 2>/dev/null || echo "NONE")
+              if [ "$ATTACHMENT_ID" != "NONE" ]; then
+                echo "Desvinculando interface de rede $NETWORK_INTERFACE_ID..."
+                aws ec2 detach-network-interface --attachment-id $ATTACHMENT_ID || echo "Falha ao desvincular interface $NETWORK_INTERFACE_ID"
               fi
+              
+              # Excluir a interface de rede
               echo "Excluindo interface de rede: $NETWORK_INTERFACE_ID"
-              aws ec2 delete-network-interface --network-interface-id $NETWORK_INTERFACE_ID || echo "Erro ao excluir a interface de rede: $NETWORK_INTERFACE_ID"
+              aws ec2 delete-network-interface --network-interface-id $NETWORK_INTERFACE_ID || echo "Erro ao excluir interface $NETWORK_INTERFACE_ID"
             done
           fi
 
