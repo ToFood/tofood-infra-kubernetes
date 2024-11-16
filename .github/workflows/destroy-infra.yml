@@ -1,4 +1,4 @@
-name: Destroy Infra
+name: 💣 Destroy Infra
 
 on:
   workflow_dispatch: # Executado manualmente
@@ -75,6 +75,19 @@ jobs:
             fi
             aws eks delete-cluster --name ${{ vars.KUBERNETES_CLUSTER_NAME }}
             echo "Cluster EKS '${{ vars.KUBERNETES_CLUSTER_NAME }}' excluído com sucesso."
+          fi
+
+      # Step to delete network interfaces
+      - name: Delete Network Interfaces
+        run: |
+          NETWORK_INTERFACE_IDS=$(aws ec2 describe-network-interfaces --query "NetworkInterfaces[*].NetworkInterfaceId" --output text)
+          if [ -z "$NETWORK_INTERFACE_IDS" ]; then
+            echo "Nenhuma interface de rede encontrada."
+          else
+            for NETWORK_INTERFACE_ID in $NETWORK_INTERFACE_IDS; do
+              echo "Excluindo interface de rede: $NETWORK_INTERFACE_ID"
+              aws ec2 delete-network-interface --network-interface-id $NETWORK_INTERFACE_ID || echo "Erro ao excluir a interface de rede: $NETWORK_INTERFACE_ID"
+            done
           fi
 
       # Step to delete security groups

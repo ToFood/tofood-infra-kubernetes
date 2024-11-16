@@ -1,4 +1,4 @@
-name: Build Infra - Terraform
+name: 📦 Build Infra - Terraform
 
 on:
   push:
