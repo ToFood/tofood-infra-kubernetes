@@ -43,7 +43,34 @@ jobs:
             echo "Instâncias EC2 encerradas com sucesso."
           fi
 
-      # Step to delete load balancers
+      # Step to delete NAT Gateways
+      - name: Delete NAT Gateways
+        run: |
+          NAT_GATEWAY_IDS=$(aws ec2 describe-nat-gateways --query "NatGateways[*].NatGatewayId" --output text)
+          if [ -z "$NAT_GATEWAY_IDS" ]; then
+            echo "Nenhum NAT Gateway encontrado."
+          else
+            for NAT_GATEWAY_ID in $NAT_GATEWAY_IDS; do
+              echo "Excluindo NAT Gateway: $NAT_GATEWAY_ID"
+              aws ec2 delete-nat-gateway --nat-gateway-id $NAT_GATEWAY_ID
+              aws ec2 wait nat-gateway-deleted --nat-gateway-ids $NAT_GATEWAY_ID
+            done
+          fi
+
+      # Step to release Elastic IPs
+      - name: Release Elastic IPs
+        run: |
+          ALLOCATION_IDS=$(aws ec2 describe-addresses --query "Addresses[*].AllocationId" --output text)
+          if [ -z "$ALLOCATION_IDS" ]; then
+            echo "Nenhum Elastic IP encontrado."
+          else
+            for ALLOCATION_ID in $ALLOCATION_IDS; do
+              echo "Liberando Elastic IP: $ALLOCATION_ID"
+              aws ec2 release-address --allocation-id $ALLOCATION_ID || echo "Erro ao liberar Elastic IP: $ALLOCATION_ID"
+            done
+          fi
+
+      # Step to delete Load Balancers
       - name: Delete Load Balancers
         run: |
           LB_ARN_LIST=$(aws elbv2 describe-load-balancers --query "LoadBalancers[*].LoadBalancerArn" --output text)
@@ -56,28 +83,32 @@ jobs:
             done
           fi
 
-      # Step to delete EKS cluster
-      - name: Delete EKS Cluster
+      # Step to delete EKS clusters
+      - name: Delete EKS Clusters
         run: |
-          echo "Excluindo cluster EKS..."
-          CLUSTER_STATUS=$(aws eks describe-cluster --name ${{ vars.KUBERNETES_CLUSTER_NAME }} --region ${{ vars.AWS_REGION }} --query "cluster.status" --output text 2>/dev/null || echo "NOT_FOUND")
-          if [ "$CLUSTER_STATUS" == "NOT_FOUND" ]; then
-            echo "O cluster EKS '${{ vars.KUBERNETES_CLUSTER_NAME }}' não existe. Pulando..."
+          CLUSTERS=$(aws eks list-clusters --query "clusters" --output text)
+          if [ -z "$CLUSTERS" ]; then
+            echo "Nenhum cluster EKS encontrado."
           else
-            NODEGROUPS=$(aws eks list-nodegroups --cluster-name ${{ vars.KUBERNETES_CLUSTER_NAME }} --query "nodegroups" --output text)
-            if [ -n "$NODEGROUPS" ]; then
+            for CLUSTER in $CLUSTERS; do
+              echo "Excluindo Cluster EKS: $CLUSTER"
+              
+              # Delete Node Groups
+              NODEGROUPS=$(aws eks list-nodegroups --cluster-name $CLUSTER --query "nodegroups" --output text)
               for NODEGROUP in $NODEGROUPS; do
-                echo "Excluindo Node Group: $NODEGROUP"
-                aws eks delete-nodegroup --cluster-name ${{ vars.KUBERNETES_CLUSTER_NAME }} --nodegroup-name $NODEGROUP
-                aws eks wait nodegroup-deleted --cluster-name ${{ vars.KUBERNETES_CLUSTER_NAME }} --nodegroup-name $NODEGROUP
-                echo "Node Group $NODEGROUP excluído com sucesso."
+                echo "Excluindo Node Group: $NODEGROUP do Cluster: $CLUSTER"
+                aws eks delete-nodegroup --cluster-name $CLUSTER --nodegroup-name $NODEGROUP
+                aws eks wait nodegroup-deleted --cluster-name $CLUSTER --nodegroup-name $NODEGROUP
               done
-            fi
-            aws eks delete-cluster --name ${{ vars.KUBERNETES_CLUSTER_NAME }}
-            echo "Cluster EKS '${{ vars.KUBERNETES_CLUSTER_NAME }}' excluído com sucesso."
+
+              # Delete the Cluster
+              aws eks delete-cluster --name $CLUSTER
+              aws eks wait cluster-deleted --name $CLUSTER
+              echo "Cluster EKS $CLUSTER excluído com sucesso."
+            done
           fi
 
-      # Step to delete network interfaces
+      # Step to delete Network Interfaces
       - name: Delete Network Interfaces
         run: |
           NETWORK_INTERFACE_IDS=$(aws ec2 describe-network-interfaces --query "NetworkInterfaces[*].NetworkInterfaceId" --output text)
@@ -85,21 +116,17 @@ jobs:
             echo "Nenhuma interface de rede encontrada."
           else
             for NETWORK_INTERFACE_ID in $NETWORK_INTERFACE_IDS; do
+              ATTACHMENT_STATE=$(aws ec2 describe-network-interfaces --network-interface-ids $NETWORK_INTERFACE_ID --query "NetworkInterfaces[0].Status" --output text)
+              if [ "$ATTACHMENT_STATE" == "in-use" ]; then
+                echo "A interface de rede $NETWORK_INTERFACE_ID está em uso. Tentando desvincular..."
+                INSTANCE_ID=$(aws ec2 describe-network-interfaces --network-interface-ids $NETWORK_INTERFACE_ID --query "NetworkInterfaces[0].Attachment.InstanceId" --output text)
+                if [ "$INSTANCE_ID" != "None" ]; then
+                  echo "Desvinculando a interface $NETWORK_INTERFACE_ID do EC2 $INSTANCE_ID..."
+                  aws ec2 detach-network-interface --attachment-id $(aws ec2 describe-network-interfaces --network-interface-ids $NETWORK_INTERFACE_ID --query "NetworkInterfaces[0].Attachment.AttachmentId" --output text) || echo "Erro ao desvincular a interface $NETWORK_INTERFACE_ID"
+                fi
+              fi
               echo "Excluindo interface de rede: $NETWORK_INTERFACE_ID"
               aws ec2 delete-network-interface --network-interface-id $NETWORK_INTERFACE_ID || echo "Erro ao excluir a interface de rede: $NETWORK_INTERFACE_ID"
-            done
-          fi
-
-      # Step to delete security groups
-      - name: Delete Security Groups
-        run: |
-          SG_IDS=$(aws ec2 describe-security-groups --query "SecurityGroups[?GroupName!='default'].GroupId" --output text)
-          if [ -z "$SG_IDS" ]; then
-            echo "Nenhum Security Group encontrado."
-          else
-            for SG_ID in $SG_IDS; do
-              echo "Excluindo Security Group: $SG_ID"
-              aws ec2 delete-security-group --group-id $SG_ID || echo "Erro ao excluir $SG_ID. Verifique dependências."
             done
           fi
 
