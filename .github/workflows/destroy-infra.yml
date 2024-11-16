@@ -53,7 +53,7 @@ jobs:
             for NAT_GATEWAY_ID in $NAT_GATEWAY_IDS; do
               echo "Excluindo NAT Gateway: $NAT_GATEWAY_ID"
               aws ec2 delete-nat-gateway --nat-gateway-id $NAT_GATEWAY_ID
-              aws ec2 wait nat-gateway-deleted --nat-gateway-ids $NAT_GATEWAY_ID
+              aws ec2 wait nat-gateway-deleted --nat-gateway-id $NAT_GATEWAY_ID
             done
           fi
 
@@ -80,6 +80,7 @@ jobs:
             for LB_ARN in $LB_ARN_LIST; do
               echo "Excluindo Load Balancer: $LB_ARN"
               aws elbv2 delete-load-balancer --load-balancer-arn $LB_ARN
+              aws elbv2 wait load-balancer-deleted --load-balancer-arn $LB_ARN
             done
           fi
 
@@ -116,14 +117,21 @@ jobs:
           else
             for NETWORK_INTERFACE_ID in $NETWORK_INTERFACE_IDS; do
               echo "Verificando dependências para a interface: $NETWORK_INTERFACE_ID"
-              
-              # Desvincular da instância EC2, se aplicável
+
+              # Desvincular Elastic IP associado
+              ALLOCATION_ID=$(aws ec2 describe-addresses --query "Addresses[?NetworkInterfaceId=='$NETWORK_INTERFACE_ID'].AllocationId" --output text)
+              if [ "$ALLOCATION_ID" != "None" ]; then
+                echo "Liberando Elastic IP $ALLOCATION_ID associado à interface $NETWORK_INTERFACE_ID"
+                aws ec2 release-address --allocation-id $ALLOCATION_ID || echo "Erro ao liberar Elastic IP: $ALLOCATION_ID"
+              fi
+
+              # Desvincular a interface
               ATTACHMENT_ID=$(aws ec2 describe-network-interfaces --network-interface-ids $NETWORK_INTERFACE_ID --query "NetworkInterfaces[0].Attachment.AttachmentId" --output text 2>/dev/null || echo "NONE")
               if [ "$ATTACHMENT_ID" != "NONE" ]; then
                 echo "Desvinculando interface de rede $NETWORK_INTERFACE_ID..."
-                aws ec2 detach-network-interface --attachment-id $ATTACHMENT_ID || echo "Falha ao desvincular interface $NETWORK_INTERFACE_ID"
+                aws ec2 detach-network-interface --attachment-id $ATTACHMENT_ID || echo "Erro ao desvincular a interface $NETWORK_INTERFACE_ID"
               fi
-              
+
               # Excluir a interface de rede
               echo "Excluindo interface de rede: $NETWORK_INTERFACE_ID"
               aws ec2 delete-network-interface --network-interface-id $NETWORK_INTERFACE_ID || echo "Erro ao excluir interface $NETWORK_INTERFACE_ID"
@@ -148,8 +156,8 @@ jobs:
             IGW_IDS=$(aws ec2 describe-internet-gateways --filters "Name=attachment.vpc-id,Values=$VPC_ID" --query "InternetGateways[*].InternetGatewayId" --output text)
             for IGW_ID in $IGW_IDS; do
               echo "Desanexando e excluindo Internet Gateway: $IGW_ID"
-              aws ec2 detach-internet-gateway --internet-gateway-id $IGW_ID --vpc-id $VPC_ID
-              aws ec2 delete-internet-gateway --internet-gateway-id $IGW_ID
+              aws ec2 detach-internet-gateway --internet-gateway-id $IGW_ID --vpc-id $VPC_ID || echo "Erro ao desanexar Internet Gateway: $IGW_ID"
+              aws ec2 delete-internet-gateway --internet-gateway-id $IGW_ID || echo "Erro ao excluir Internet Gateway: $IGW_ID"
             done
 
             # Exclui a VPC
