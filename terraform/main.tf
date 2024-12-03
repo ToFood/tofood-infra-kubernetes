@@ -22,6 +22,7 @@ provider "kubernetes" {
   host                   = data.aws_eks_cluster.tofood_cluster.endpoint
   token                  = data.aws_eks_cluster_auth.tofood_cluster.token
   cluster_ca_certificate = base64decode(data.aws_eks_cluster.tofood_cluster.certificate_authority.0.data)
+  depends_on             = [aws_eks_cluster.tofood_cluster]
 }
 
 # Variables
@@ -37,7 +38,7 @@ variable "cluster_name" {
 
 variable "aws_account_id" {
   description = "AWS Account ID"
-  default     = "123456789012" # Substitua pelo seu ID de conta AWS
+  default     = "034362063771" # Substitua pelo seu ID de conta AWS
 }
 
 variable "image_name" {
@@ -68,29 +69,18 @@ resource "aws_iam_role" "eks_default_role" {
   })
 }
 
+# Anexando política AmazonEKSClusterPolicy
 resource "aws_iam_role_policy_attachment" "eks_default_role_policy" {
   role       = aws_iam_role.eks_default_role.name
   policy_arn = "arn:aws:iam::aws:policy/AmazonEKSClusterPolicy"
 }
 
-# IAM Role Custom com a política fornecida
-resource "aws_iam_role" "custom_assume_role" {
-  name = "CustomAssumeRole"
-
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17",
-    Statement = [
-      {
-        Effect = "Allow",
-        Action = "sts:AssumeRole",
-        Principal = {
-          AWS = var.custom_aws_account_id
-        },
-        Condition = {}
-      }
-    ]
-  })
+# Adição de outra política para gerenciamento de recursos de VPC pelo EKS
+resource "aws_iam_role_policy_attachment" "eks_default_vpc_policy" {
+  role       = aws_iam_role.eks_default_role.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEKSVPCResourceController"
 }
+
 
 # VPC Configuration
 data "aws_availability_zones" "available" {
@@ -107,10 +97,10 @@ resource "aws_vpc" "tofood_vpc" {
 resource "aws_subnet" "tofood_subnets" {
   count             = 3
   vpc_id            = aws_vpc.tofood_vpc.id
-  cidr_block        = "10.0.${count.index}.0/24"
+  cidr_block        = "10.0.${count.index + 1}.0/24"
   availability_zone = data.aws_availability_zones.available.names[count.index]
   tags = {
-    Name = "tofood-subnet-${count.index}"
+    Name = "tofood-subnet-${count.index + 1}"
   }
 }
 
