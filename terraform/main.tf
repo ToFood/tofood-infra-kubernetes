@@ -45,6 +45,11 @@ variable "image_name" {
   default     = "tofood/backend"
 }
 
+variable "custom_aws_account_id" {
+  description = "AWS Account ID do principal que pode assumir essa role"
+  default     = "034362063771" # Substitua pelo ID da conta apropriado
+}
+
 # IAM Role para EKS Cluster
 resource "aws_iam_role" "eks_default_role" {
   name = "AmazonEKS_DefaultRole"
@@ -66,6 +71,25 @@ resource "aws_iam_role" "eks_default_role" {
 resource "aws_iam_role_policy_attachment" "eks_default_role_policy" {
   role       = aws_iam_role.eks_default_role.name
   policy_arn = "arn:aws:iam::aws:policy/AmazonEKSClusterPolicy"
+}
+
+# IAM Role Custom com a política fornecida
+resource "aws_iam_role" "custom_assume_role" {
+  name = "CustomAssumeRole"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [
+      {
+        Effect = "Allow",
+        Action = "sts:AssumeRole",
+        Principal = {
+          AWS = var.custom_aws_account_id
+        },
+        Condition = {}
+      }
+    ]
+  })
 }
 
 # VPC Configuration
