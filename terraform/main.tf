@@ -22,7 +22,6 @@ provider "kubernetes" {
   host                   = data.aws_eks_cluster.tofood_cluster.endpoint
   token                  = data.aws_eks_cluster_auth.tofood_cluster.token
   cluster_ca_certificate = base64decode(data.aws_eks_cluster.tofood_cluster.certificate_authority.0.data)
-  depends_on             = [aws_eks_cluster.tofood_cluster]
 }
 
 # Variables
@@ -38,7 +37,7 @@ variable "cluster_name" {
 
 variable "aws_account_id" {
   description = "AWS Account ID"
-  default     = "034362063771" # Substitua pelo seu ID de conta AWS
+  default     = "034362063771"
 }
 
 variable "image_name" {
@@ -48,7 +47,7 @@ variable "image_name" {
 
 variable "custom_aws_account_id" {
   description = "AWS Account ID do principal que pode assumir essa role"
-  default     = "034362063771" # Substitua pelo ID da conta apropriado
+  default     = "034362063771"
 }
 
 # IAM Role para EKS Cluster
@@ -69,7 +68,7 @@ resource "aws_iam_role" "eks_default_role" {
   })
 }
 
-# Anexando política AmazonEKSClusterPolicy
+# Anexando políticas necessárias
 resource "aws_iam_role_policy_attachment" "eks_default_role_policy" {
   role       = aws_iam_role.eks_default_role.name
   policy_arn = "arn:aws:iam::aws:policy/AmazonEKSClusterPolicy"
@@ -80,7 +79,6 @@ resource "aws_iam_role_policy_attachment" "eks_default_vpc_policy" {
   role       = aws_iam_role.eks_default_role.name
   policy_arn = "arn:aws:iam::aws:policy/AmazonEKSVPCResourceController"
 }
-
 
 # VPC Configuration
 data "aws_availability_zones" "available" {
@@ -144,6 +142,11 @@ resource "aws_eks_cluster" "tofood_cluster" {
   }
 }
 
+# Forçando dependência entre EKS e Kubernetes
+resource "null_resource" "wait_for_eks" {
+  depends_on = [aws_eks_cluster.tofood_cluster]
+}
+
 data "aws_eks_cluster" "tofood_cluster" {
   name = aws_eks_cluster.tofood_cluster.name
 }
@@ -157,6 +160,8 @@ resource "kubernetes_namespace" "tofood" {
   metadata {
     name = "tofood"
   }
+
+  depends_on = [null_resource.wait_for_eks]
 }
 
 # Kubernetes Deployment
@@ -194,6 +199,8 @@ resource "kubernetes_deployment" "tofood_app" {
       }
     }
   }
+
+  depends_on = [null_resource.wait_for_eks]
 }
 
 # Kubernetes Service
@@ -215,6 +222,8 @@ resource "kubernetes_service" "tofood_app_service" {
       target_port = 80
     }
   }
+
+  depends_on = [null_resource.wait_for_eks]
 }
 
 # Outputs
